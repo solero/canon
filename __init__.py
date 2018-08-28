@@ -289,7 +289,7 @@ class Compressor(object):
 
             return result
         except (IndexError, KeyError, AttributeError):
-            raise CompressionError("There was an error during decompression")
+            raise CompressionError("There was an error during compression")
 
     @staticmethod
     def decompress(data):
