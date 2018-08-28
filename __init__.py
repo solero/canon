@@ -4,6 +4,9 @@ class CompressionError(Exception):
 class DecompressionError(Exception):
     pass
 
+class NotUnicodeError(Exception):
+    pass
+
 class _ManifestMasks:
     NullMask = 1
     TypeMask = 15
@@ -291,6 +294,9 @@ class Compressor(object):
     @staticmethod
     def decompress(data):
         try:
+            if not isinstance(data, unicode):
+                raise NotUnicodeError()
+
             length_limit = len(data) + 2
             data_set = _DataSet()
             while len(data) > 0 and len(data) != length_limit:
