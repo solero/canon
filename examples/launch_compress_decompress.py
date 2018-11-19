@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from canon import Compressor
+from canon.data.launch import load_data_set_from_object, load_data_set_into_object
 
 if __name__ == "__main__":
     data = {
@@ -17,11 +18,11 @@ if __name__ == "__main__":
         }
     }
 
-    new_data_set = Compressor.load_data_set_from_object(data)
+    new_data_set = load_data_set_from_object(data)
     compressed = Compressor.compress(new_data_set)
     print(compressed)
 
     decompressed = Compressor.decompress(compressed)
 
-    new_data = Compressor.load_data_set_into_object(decompressed)
+    new_data = load_data_set_into_object(decompressed)
     print(new_data)
