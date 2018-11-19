@@ -1,29 +1,15 @@
-class CompressionError(Exception):
-    pass
+import manifest_masks
+import type_masks
 
-class DecompressionError(Exception):
-    pass
+from exceptions import CompressionError, DecompressionError, NotUnicodeError
 
-class NotUnicodeError(Exception):
-    pass
-
-class _ManifestMasks:
-    NullMask = 1
-    TypeMask = 15
-    SizeMask = 255
-
-class _TypeMasks:
-    LowerByte = 255
-    UpperByte = 65280
-    Int16 = 65535
-    LowerInt32 = 65535
-    UpperInt32 = 4294901760
 
 _SpecialTypes = ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "=", "+", "|"]
 
+
 class _ManifestEntry(object):
 
-    def __init__(self, character = None):
+    def __init__(self, character=None):
         self.null_chars = [True, True, True, True]
 
         self.type = 1
@@ -43,17 +29,18 @@ class _ManifestEntry(object):
     def deserialize(self, character):
         char_code = ord(character)
         for index, null_char in enumerate(self.null_chars):
-            self.null_chars[index] = False if not char_code >> index & _ManifestMasks.NullMask == 1 else True
+            self.null_chars[index] = False if not char_code >> index & manifest_masks.NullMask == 1 else True
 
-        self.type = char_code >> 4 & _ManifestMasks.TypeMask
-        self.size = char_code >> 8 & _ManifestMasks.SizeMask
+        self.type = char_code >> 4 & manifest_masks.TypeMask
+        self.size = char_code >> 8 & manifest_masks.SizeMask
+
 
 class _DataSet(object):
     def __init__(self):
         self.entries = []
         self.size = 0
 
-    def append(self, data, index = None):
+    def append(self, data, index=None):
         self.size += data.manifest.size
 
         if index is None:
@@ -70,6 +57,7 @@ class _DataSet(object):
         self.entries[index] = None
         return data
 
+
 class _DataType(object):
     def __init__(self, value, manifest):
         self.value = value
@@ -81,10 +69,11 @@ class _DataType(object):
     def decompress(self, data):
         raise NotImplementedError()
 
+
 class _Int16(_DataType):
     TypeID = 1
 
-    def __init__(self, value = 0, manifest = None):
+    def __init__(self, value=0, manifest=None):
         if manifest is None:
             manifest = _ManifestEntry()
             manifest.null_chars[1] = False
@@ -99,7 +88,7 @@ class _Int16(_DataType):
             character = unichr(1)
         else:
             self.manifest.null_chars[0] = False
-            character = unichr(self.value & _TypeMasks.Int16)
+            character = unichr(self.value & type_masks.Int16)
 
             for index, special_type in enumerate(_SpecialTypes):
                 if character == special_type:
@@ -121,15 +110,16 @@ class _Int16(_DataType):
             self.value = ord(data[0])
 
             if self.value >> 15 == 1:
-                self.value = self.value | _TypeMasks.UpperInt32
+                self.value = self.value | type_masks.UpperInt32
 
     def bit(self, _):
         return self.value
 
+
 class _Boolean(_Int16):
     TypeID = 2
 
-    def __init__(self, value = 0, manifest = None):
+    def __init__(self, value=0, manifest = None):
         super(_Boolean, self).__init__(value, manifest)
         self.manifest.type = _Boolean.TypeID
 
@@ -142,16 +132,16 @@ class _Boolean(_Int16):
         else:
             self.value = ord(data[0])
 
-    def bit(self, bit, value = None):
+    def bit(self, bit, value=None):
         if value is None:
             return False if not self.value >> bit & True else True
-        self.value = self.value | 1 << bit if value else self.value & (_TypeMasks.Int16 ^ 1 << bit)
+        self.value = self.value | 1 << bit if value else self.value & (type_masks.Int16 ^ 1 << bit)
 
 
 class _Float(_DataType):
     TypeID = 3
 
-    def __init__(self, value = 0, manifest = None):
+    def __init__(self, value=0, manifest=None):
         if manifest is None:
             manifest = _ManifestEntry()
             manifest.type = _Float.TypeID
@@ -162,8 +152,8 @@ class _Float(_DataType):
         super(_Float, self).__init__(value, manifest)
 
     def compress(self):
-        first_value_mask = self.value >> 15 & _TypeMasks.Int16
-        second_value_mask = self.value & _TypeMasks.Int16
+        first_value_mask = self.value >> 15 & type_masks.Int16
+        second_value_mask = self.value & type_masks.Int16
 
         if first_value_mask == 0:
             self.manifest.null_chars[0] = True
@@ -192,10 +182,11 @@ class _Float(_DataType):
 
         self.value = second_char_code | first_char_code << 15
 
+
 class _String(_DataType):
     TypeID = 4
 
-    def __init__(self, value = "", manifest = None):
+    def __init__(self, value="", manifest=None):
         if not value:
             value = ""
 
@@ -203,10 +194,7 @@ class _String(_DataType):
             manifest = _ManifestEntry()
             manifest.type = _String.TypeID
             manifest.size = len(value)
-            manifest.null_chars[0] = False
-            manifest.null_chars[1] = False
-            manifest.null_chars[2] = False
-            manifest.null_chars[3] = False
+            manifest.null_chars = [False] * len(manifest.null_chars)
 
         super(_String, self).__init__(value, manifest)
 
@@ -230,55 +218,7 @@ class _String(_DataType):
         self.manifest.size = len(self.value) + 1
 
 
-
 class Compressor(object):
-
-    LevelCount = 36
-
-    @staticmethod
-    def load_data_set_into_object(data_set, filter=False):
-        levels = {
-            level: {
-                "PuffleOs": data_set.entries[level].value,
-                "BestTime": data_set.entries[level + Compressor.LevelCount].value,
-                "TurboDone": bool(data_set.entries[72 + level / 16].bit(level % 16))
-            }
-            for level in xrange(Compressor.LevelCount) if not filter or not (data_set.entries[level].value == 0
-                                                                   and data_set.entries[
-                                                                       level + Compressor.LevelCount].value == 600)}
-
-        return levels
-
-    @staticmethod
-    def load_data_set_from_object(data_object):
-        data_set = _DataSet()
-
-        for level in xrange(Compressor.LevelCount):
-            if level in data_object:
-                data_set.append(_Int16(data_object[level]["PuffleOs"]))
-            else:
-                data_set.append(_Int16())
-
-        for level in xrange(Compressor.LevelCount):
-            if level in data_object:
-                data_set.append(_Int16(data_object[level]["BestTime"]))
-            else:
-                data_set.append(_Int16(600))
-
-        for _ in xrange(3):
-            data_set.append(_Boolean())
-
-        for level in xrange(Compressor.LevelCount):
-            if level in data_object:
-                data_set.entries[72 + level / 16].bit(level % 16, int(data_object[level]["TurboDone"]))
-
-        for level_modifier in xrange(3):
-            if data_set.entries[72 + level_modifier].value == 0:
-                data_set.entries[72 + level_modifier] = _Int16(0)
-
-        data_set.append(_String())
-
-        return data_set
 
     @staticmethod
     def compress(data_set):
