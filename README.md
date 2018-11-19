@@ -15,7 +15,11 @@ The library currently only has utility functions for converting Puffle Launch ga
 
 ## Installation
 
-Canon is not available on PyPI. You have to clone the repository and import it manually.
+Canon is now available on the PyPI, hurray!
+
+`pip install Canon`
+
+~~Canon is not available on PyPI. You have to clone the repository and import it manually.~~
 
 ` $ git clone https://github.com/ketnipz/canon`
 
@@ -28,11 +32,12 @@ This is the most common usage, and it how the library is used inside Houdini.
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from canon import Compressor
+from Canon import Compressor
+from Canon.Data.Launch import load_data_set_into_object
 
 if __name__ == "__main__":
 	decompressed = Compressor.decompress(u"Ȑ Ȑ ȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȐ㺀ȐȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȠȑȑŀ")
-	new_data = Compressor.load_data_set_into_object(decompressed, filter=True)
+	new_data = load_data_set_into_object(decompressed, filtered=True)
 	print(new_data)
 
 	# Result: {0: {'PuffleOs': 32, 'BestTime': 16000, 'TurboDone': True}, 1: {'PuffleOs': 32, 'BestTime': 17, 'TurboDone': True}}
@@ -45,32 +50,33 @@ Whilst canon can be used to convert a unicode save game into an object, it can a
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from canon import Compressor
+from Canon import Compressor
+from Canon.Data.Launch import load_data_set_from_object
 
 if __name__ == "__main__":
-	data = {
-		0: {
-			"PuffleOs": 32,
-			"BestTime": 16000,
-			"TurboDone": True
-		},
-		1: {
-			"PuffleOs": 32,
-			"BestTime": 17,
-			"TurboDone": True
-		}
-	}
+    data = {
+        0: {
+            "PuffleOs": 32,
+            "BestTime": 16000,
+            "TurboDone": True
+        },
+        1: {
+            "PuffleOs": 32,
+            "BestTime": 17,
+            "TurboDone": True
+        }
+    }
 
-	new_data_set = Compressor.load_data_set_from_object(data)
-	compressed = Compressor.compress(new_data_set)
-	print(compressed)
-
-	# Result: u"Ȑ Ȑ ȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȐ㺀ȐȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȠȑȑŀ"
+    new_data_set = load_data_set_from_object(data)
+    compressed = Compressor.compress(new_data_set)
+    print(compressed)
+    
+    # Result: u"Ȑ Ȑ ȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȑȐ㺀ȐȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȐɘȠȑȑŀ"
 ```
 
 ### Filter flag
 
-`load_data_set_into_object` has a parameter `filter`. This can be used to filter level results which have not been completed yet. Since Puffle Launch game saves contain the data for every level, you may just want the ones which have been completed, if this is the case, pass `filter= True` into the function.
+`load_data_set_into_object` has a parameter `filtered`. This can be used to filter level results which have not been completed yet. Since Puffle Launch game saves contain the data for every level, you may just want the ones which have been completed, if this is the case, pass `filter= True` into the function.
 
 ```py
 new_data = Compressor.load_data_set_into_object(decompressed)
@@ -81,7 +87,7 @@ print(new_data)
 
 
 ```py
-new_data = Compressor.load_data_set_into_object(decompressed, filter=True)
+new_data = Compressor.load_data_set_into_object(decompressed, filtered=True)
 print(new_data)
 # Result: {0: {'PuffleOs': 32, 'BestTime': 16000, 'TurboDone': True}, 1: {'PuffleOs': 32, 'BestTime': 17, 'TurboDone': True}}
 ```
