@@ -1,7 +1,7 @@
-import manifest_masks
-import type_masks
+import canon.manifest_masks
+import canon.type_masks
 
-from exceptions import CompressionError, DecompressionError, NotUnicodeError
+from canon.exceptions import CompressionError, DecompressionError, NotUnicodeError
 
 
 _SpecialTypes = ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "=", "+", "|"]
@@ -24,12 +24,12 @@ class _ManifestEntry(object):
             char_code = char_code | 0 if not null_char else 1 << index
         char_code = char_code | self.type << 4
         char_code = char_code | self.size << 8
-        return unichr(char_code)
+        return chr(char_code)
 
     def deserialize(self, character):
         char_code = ord(character)
         for index, null_char in enumerate(self.null_chars):
-            self.null_chars[index] = False if not char_code >> index & manifest_masks.NullMask == 1 else True
+            self.null_chars[index] = False if not (char_code >> index & manifest_masks.NullMask == 1) else True
 
         self.type = char_code >> 4 & manifest_masks.TypeMask
         self.size = char_code >> 8 & manifest_masks.SizeMask
@@ -85,14 +85,14 @@ class _Int16(_DataType):
     def compress(self):
         if not self.value:
             self.manifest.null_chars[0] = True
-            character = unichr(1)
+            character = chr(1)
         else:
             self.manifest.null_chars[0] = False
-            character = unichr(self.value & type_masks.Int16)
+            character = chr(self.value & type_masks.Int16)
 
             for index, special_type in enumerate(_SpecialTypes):
                 if character == special_type:
-                    character = unichr(index + 1) + unichr(index + 1)
+                    character = chr(index + 1) + chr(index + 1)
                     self.manifest.size = 3
                     break
 
@@ -167,8 +167,8 @@ class _Float(_DataType):
         else:
             self.manifest.null_chars[1] = False
 
-        first_char_code = unichr(first_value_mask)
-        second_char_code = unichr(second_value_mask)
+        first_char_code = chr(first_value_mask)
+        second_char_code = chr(second_value_mask)
         return self.manifest.serialize() + first_char_code + second_char_code
 
     def decompress(self, data):
@@ -202,7 +202,7 @@ class _String(_DataType):
         value = self.value
         for index, special_type in enumerate(_SpecialTypes):
             if special_type in self.value:
-                characters = unichr(index + 1) + unichr(index + 1)
+                characters = chr(index + 1) + chr(index + 1)
                 value = characters.join(value.split(special_type))
 
         self.manifest.size = len(value) + 1
@@ -210,7 +210,7 @@ class _String(_DataType):
 
     def decompress(self, data):
         for index, special_type in enumerate(_SpecialTypes):
-            characters = unichr(index + 1) + unichr(index + 1)
+            characters = chr(index + 1) + chr(index + 1)
             if characters in data:
                 data = special_type.join(data.split(characters))
 
@@ -234,9 +234,6 @@ class Compressor(object):
     @staticmethod
     def decompress(data):
         try:
-            if not isinstance(data, unicode):
-                raise NotUnicodeError()
-
             length_limit = len(data) + 2
             data_set = _DataSet()
             while len(data) > 0 and len(data) != length_limit:
